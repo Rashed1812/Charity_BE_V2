@@ -1,0 +1,17 @@
+[
+    {
+        "UserId": "2c5573b2-65d8-4d3d-a531-3281656cd93e",
+        "FullName": "د. أحمد",
+        "Specialty": "استشاري أسري",
+        "Description": "خبرة 15 عامًا في مجال الاستشارات الأسرية والتربوية.",
+        "ZoomRoomUrl": "https://zoom.us/j/1234567890",
+        "PhoneNumber": "01011845887",
+        "Email": "advisor@gmail.com",
+        "IsActive": true,
+        "IsAvailable": true,
+        "CreatedAt": "2025-07-05T00:00:00Z",
+        "ConsultationId": 1,
+        "ImageUrl": "https://example.com/images/advisors/ali.jpg",
+        "ConsultationType": 0
+    }
+]

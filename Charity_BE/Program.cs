@@ -1,0 +1,202 @@
+using System.Threading.Tasks;
+using BLL.ServiceAbstraction;
+using DAL.Data;
+using DAL.Data.DataSeed;
+using DAL.Data.Models.IdentityModels;
+using DAL.Repositories.RepositoryClasses;
+using DAL.Repositories.RepositoryIntrfaces;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using BLL.Service;
+using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.OpenApi.Models;
+using BLL.Mapping;
+using Microsoft.Extensions.DependencyInjection;
+using BLL.Services.FileService;
+using DAL.Repositories;
+
+namespace Charity_BE
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Add services to the container.
+
+            builder.Services.AddControllers();
+            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Charity API", Version = "v1" });
+
+                // Add JWT Authentication to Swagger
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new string[] {}
+                    }
+                });
+            });
+
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
+            // JWT Authentication
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["JWT:Issuer"],
+                    ValidAudience = builder.Configuration["JWT:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]))
+                };
+            });
+
+            // Repository Registrations
+            builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+            builder.Services.AddScoped<IAdvisorRepository, AdvisorRepository>();
+            builder.Services.AddScoped<IAdvisorAvailabilityRepository, AdvisorAvailabilityRepository>();
+            builder.Services.AddScoped<IAdviceRequestRepository, AdviceRequestRepository>();
+            builder.Services.AddScoped<IComplaintRepository, ComplaintRepository>();
+            builder.Services.AddScoped<IVolunteerApplicationRepository, VolunteerApplicationRepository>();
+            builder.Services.AddScoped<INewsItemRepository, NewsItemRepository>();
+            builder.Services.AddScoped<IServiceOfferingRepository, ServiceOfferingRepository>();
+            builder.Services.AddScoped<ILectureRepository, LectureRepository>();
+            builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IVolunteerRepository, VolunteerRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IHelpTypeRepository, HelpTypeRepository>();
+            builder.Services.AddScoped<IHelpRequestRepository, HelpRequestRepository>();
+            builder.Services.AddScoped<IReconcileRequestRepository, ReconcileRequestRepository>();
+            builder.Services.AddScoped<IMediationRepository, MediationRepository>();
+            builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
+            builder.Services.AddScoped<IMediationService, MediationService>();
+            builder.Services.AddScoped<IHelpTypeService, HelpTypeService>();
+            builder.Services.AddScoped<IHelpRequestService, HelpRequestService>();
+            builder.Services.AddScoped<IReconcileRequestService, ReconcileRequestService>();
+            builder.Services.AddScoped<IAdminDashboardCount, AdminDashboardCount>();
+            builder.Services.AddScoped<IImagesLibraryRepository, ImageLibraryRepository>();
+            builder.Services.AddScoped<IVideosLibraryRepository, VideosLibraryRepository>();
+            builder.Services.AddScoped<IHeroSectionRepository, HeroSectionRepository>();
+            builder.Services.AddScoped<IHomeVideoSectionRepository, HomeVideoSectionRepository>();
+            builder.Services.AddScoped<ITrendSectionRepository, TrendSectionRepository>();
+            builder.Services.AddScoped<INewsImageRepository, NewsImageRepository>();
+            builder.Services.AddScoped<IDynamicPageRepository, DynamicPageRepository>();
+            builder.Services.AddScoped<INavItemRepository, NavItemRepository>();
+
+
+            // Service Registrations
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IAdminService, AdminService>();
+            builder.Services.AddScoped<IAdvisorService, AdvisorService>();
+            builder.Services.AddScoped<IConsultationService, ConsultationService>();
+            builder.Services.AddScoped<IAdviceRequestService, AdviceRequestService>();
+            builder.Services.AddScoped<IComplaintService, ComplaintService>();
+            builder.Services.AddScoped<IVolunteerService, VolunteerService>();
+            builder.Services.AddScoped<INewsService, NewsService>();
+            builder.Services.AddScoped<IServiceOfferingService, ServiceOfferingService>();
+            builder.Services.AddScoped<ILectureService, LectureService>();
+            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IAdminService, AdminService>();
+            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IImageLibraryService, ImageLibraryService>();
+            builder.Services.AddScoped<IVideosLibraryService, VideosLibraryService>();
+            builder.Services.AddScoped<IHeroSectionService, HeroSectionService>();
+            builder.Services.AddScoped<IHomeVideoSectionService, HomeVideoSectionService>();
+            builder.Services.AddScoped<ITrendSectionService, TrendSectionService>();
+            builder.Services.AddScoped<IDynamicPageService, DynamicPageService>();
+            builder.Services.AddScoped<INavItemService, NavItemService>();
+
+            // File Service Registration
+            builder.Services.AddScoped<IFileService, FileService>();
+
+            // Data Seed
+            builder.Services.AddScoped<DataSeed>();
+
+            builder.Services.AddAutoMapper(cfg =>
+            {
+                cfg.AddProfile<AutoMapperProfile>();
+            });
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend",
+                    builder => builder.AllowAnyOrigin()
+                                      .AllowAnyHeader()
+                                      .AllowAnyMethod()
+                                      );
+            });
+
+            var app = builder.Build();
+            app.UseStaticFiles();
+
+            app.UseSwagger();
+            app.UseSwaggerUI();
+
+            app.UseHttpsRedirection();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.MapControllers();
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var seeder = services.GetRequiredService<DataSeed>();
+                    await seeder.IdentityDataSeedAsync();
+                    await seeder.DataSeedAsync();
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occurred during database seeding.");
+                }
+            }
+            app.UseCors("AllowFrontend");
+            app.Run();
+        }
+    }
+}
