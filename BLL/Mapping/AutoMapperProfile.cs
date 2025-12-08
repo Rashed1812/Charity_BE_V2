@@ -91,8 +91,7 @@ namespace BLL.Mapping
             //.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()))
             //.ForMember(dest => dest.Tags, opt => opt.MapFrom(src => DeserializeTags(src.Tags)));
             CreateMap<CreateLectureDTO, Lecture>()
-                .ForMember(dest => dest.VideoUrl, opt => opt.Ignore())
-                .ForMember(dest => dest.VideoFile, opt => opt.Ignore());
+                .ForMember(dest => dest.VideoUrl, opt => opt.Ignore());
             //.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type))
             //.ForMember(dest => dest.Tags, opt => opt.MapFrom(src => SerializeTags(src.Tags)));
             CreateMap<LectureDTO, Lecture>();
@@ -100,7 +99,6 @@ namespace BLL.Mapping
                 //.ForMember(dest => dest.Tags, opt => opt.MapFrom(src => SerializeTags(src.Tags)));
             CreateMap<UpdateLectureDTO, Lecture>()
                 .ForMember(dest => dest.VideoUrl, opt => opt.Ignore())
-                .ForMember(dest => dest.VideoFile, opt => opt.Ignore())
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<NewsItem, NewsItemDTO>()
@@ -213,11 +211,9 @@ namespace BLL.Mapping
             //VideoLibrary
             CreateMap<VideosLibrary, VideosLibraryDTO>();
             CreateMap<CreateVideosLibraryDTO, VideosLibrary>()
-                .ForMember(dest => dest.VideoUrl, opt => opt.Ignore())
-                .ForMember(dest => dest.VideoFile, opt => opt.Ignore());
+                .ForMember(dest => dest.VideoUrl, opt => opt.Ignore());
             CreateMap<UpdateVideosLibraryDTO, VideosLibrary>()
                 .ForMember(dest => dest.VideoUrl, opt => opt.Ignore())
-                .ForMember(dest => dest.VideoFile, opt => opt.Ignore())
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             // HeroSection Mapping

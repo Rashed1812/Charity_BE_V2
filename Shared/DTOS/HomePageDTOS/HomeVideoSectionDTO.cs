@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace Shared.DTOS.HomePageDTOS
 {
@@ -17,6 +18,6 @@ namespace Shared.DTOS.HomePageDTOS
     {
         public string Title { get; set; }
         public string Description { get; set; }
-        public string VideoUrl { get; set; }
+        public IFormFile VideoFile { get; set; }
     }
 }

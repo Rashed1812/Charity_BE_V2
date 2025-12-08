@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace Shared.DTOS.DynamicPage
 {
@@ -69,6 +70,8 @@ namespace Shared.DTOS.DynamicPage
         [StringLength(500)]
         public string? VideoUrl { get; set; }
 
+        public IFormFile? VideoFile { get; set; }
+
         public int Order { get; set; }
     }
 
@@ -112,6 +115,8 @@ namespace Shared.DTOS.DynamicPage
 
         [StringLength(500)]
         public string? VideoUrl { get; set; }
+
+        public IFormFile? VideoFile { get; set; }
 
         public int Order { get; set; }
     }

@@ -129,6 +129,30 @@ namespace BLL.Service
                 if (imageTextItems.Count > 5)
                     return ApiResponse<DynamicPageDto>.ErrorResult("Maximum 5 images allowed for 'image_text' type items", 400);
 
+                var items = new List<DynamicPageItem>();
+                foreach (var itemDto in createDto.Items)
+                {
+                    string videoUrl = itemDto.VideoUrl;
+                    
+                    // Handle video file upload if type is "video" and VideoFile is provided
+                    if (itemDto.Type.ToLower() == "video" && itemDto.VideoFile != null && itemDto.VideoFile.Length > 0)
+                    {
+                        videoUrl = await HandleVideoFileUploadAsync(itemDto.VideoFile);
+                    }
+
+                    items.Add(new DynamicPageItem
+                    {
+                        Type = itemDto.Type,
+                        Content = itemDto.Content,
+                        ImageUrl = itemDto.ImageUrl,
+                        FileUrl = itemDto.FileUrl,
+                        FileName = itemDto.FileName,
+                        VideoUrl = videoUrl,
+                        Order = itemDto.Order,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 var dynamicPage = new DynamicPage
                 {
                     PageName = createDto.PageName,
@@ -137,17 +161,7 @@ namespace BLL.Service
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                     CreatedBy = userId,
-                    Items = createDto.Items.Select((item, index) => new DynamicPageItem
-                    {
-                        Type = item.Type,
-                        Content = item.Content,
-                        ImageUrl = item.ImageUrl,
-                        FileUrl = item.FileUrl,
-                        FileName = item.FileName,
-                        VideoUrl = item.VideoUrl,
-                        Order = item.Order,
-                        CreatedAt = DateTime.UtcNow
-                    }).ToList()
+                    Items = items
                 };
 
                 var createdPage = await _dynamicPageRepository.CreateAsync(dynamicPage);
@@ -199,12 +213,26 @@ namespace BLL.Service
                         var existingItem = existingItems.FirstOrDefault(i => i.Id == itemDto.Id);
                         if (existingItem != null)
                         {
+                            string videoUrl = itemDto.VideoUrl ?? existingItem.VideoUrl;
+                            
+                            // Handle video file upload if type is "video" and VideoFile is provided
+                            if (itemDto.Type.ToLower() == "video" && itemDto.VideoFile != null && itemDto.VideoFile.Length > 0)
+                            {
+                                // Delete old video file if exists
+                                if (!string.IsNullOrEmpty(existingItem.VideoUrl) && existingItem.VideoUrl.StartsWith("/uploads/dynamic-pages/videos/"))
+                                {
+                                    await DeleteVideoFileAsync(existingItem.VideoUrl);
+                                }
+                                
+                                videoUrl = await HandleVideoFileUploadAsync(itemDto.VideoFile);
+                            }
+
                             existingItem.Type = itemDto.Type;
                             existingItem.Content = itemDto.Content;
                             existingItem.ImageUrl = itemDto.ImageUrl;
                             existingItem.FileUrl = itemDto.FileUrl;
                             existingItem.FileName = itemDto.FileName;
-                            existingItem.VideoUrl = itemDto.VideoUrl;
+                            existingItem.VideoUrl = videoUrl;
                             existingItem.Order = itemDto.Order;
                             existingItem.UpdatedAt = DateTime.UtcNow;
                             updatedItems.Add(existingItem);
@@ -213,6 +241,14 @@ namespace BLL.Service
                     else
                     {
                         // Add new item
+                        string videoUrl = itemDto.VideoUrl;
+                        
+                        // Handle video file upload if type is "video" and VideoFile is provided
+                        if (itemDto.Type.ToLower() == "video" && itemDto.VideoFile != null && itemDto.VideoFile.Length > 0)
+                        {
+                            videoUrl = await HandleVideoFileUploadAsync(itemDto.VideoFile);
+                        }
+
                         var newItem = new DynamicPageItem
                         {
                             DynamicPageId = id,
@@ -221,7 +257,7 @@ namespace BLL.Service
                             ImageUrl = itemDto.ImageUrl,
                             FileUrl = itemDto.FileUrl,
                             FileName = itemDto.FileName,
-                            VideoUrl = itemDto.VideoUrl,
+                            VideoUrl = videoUrl,
                             Order = itemDto.Order,
                             CreatedAt = DateTime.UtcNow
                         };
@@ -233,6 +269,11 @@ namespace BLL.Service
                 var itemsToRemove = existingItems.Where(item => !updateDto.Items.Any(dto => dto.Id == item.Id)).ToList();
                 foreach (var item in itemsToRemove)
                 {
+                    // Delete video file if exists
+                    if (item.Type.ToLower() == "video" && !string.IsNullOrEmpty(item.VideoUrl) && item.VideoUrl.StartsWith("/uploads/dynamic-pages/videos/"))
+                    {
+                        await DeleteVideoFileAsync(item.VideoUrl);
+                    }
                     existingPage.Items.Remove(item);
                 }
 
@@ -253,9 +294,18 @@ namespace BLL.Service
         {
             try
             {
-                var exists = await _dynamicPageRepository.ExistsAsync(id);
-                if (!exists)
+                var page = await _dynamicPageRepository.GetByIdAsync(id);
+                if (page == null)
                     return ApiResponse<bool>.ErrorResult("Page not found", 404);
+
+                // Delete all video files associated with video items
+                foreach (var item in page.Items)
+                {
+                    if (item.Type.ToLower() == "video" && !string.IsNullOrEmpty(item.VideoUrl) && item.VideoUrl.StartsWith("/uploads/dynamic-pages/videos/"))
+                    {
+                        await DeleteVideoFileAsync(item.VideoUrl);
+                    }
+                }
 
                 var result = await _dynamicPageRepository.DeleteAsync(id);
                 return ApiResponse<bool>.SuccessResult(result, "Page deleted successfully");
@@ -297,6 +347,8 @@ namespace BLL.Service
                 // Validate file type
                 var allowedExtensions = fileType.ToLower() == "image"
                     ? new[] { ".jpg", ".jpeg", ".png", ".gif" }
+                    : fileType.ToLower() == "video"
+                    ? new[] { ".mp4" }
                     : new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" };
 
                 var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
@@ -304,7 +356,11 @@ namespace BLL.Service
                     return ApiResponse<FileUploadResponseDto>.ErrorResult("Invalid file type", 400);
 
                 // Validate file size
-                var maxSize = fileType.ToLower() == "image" ? 10 * 1024 * 1024 : 10 * 1024 * 1024; // 10MB for images, 10MB for documents
+                var maxSize = fileType.ToLower() == "image" 
+                    ? 10 * 1024 * 1024  // 10MB for images
+                    : fileType.ToLower() == "video"
+                    ? 500 * 1024 * 1024  // 500MB for videos
+                    : 10 * 1024 * 1024;  // 10MB for documents
                 if (file.Length > maxSize)
                     return ApiResponse<FileUploadResponseDto>.ErrorResult("File size too large", 400);
 
@@ -397,6 +453,51 @@ namespace BLL.Service
                     UpdatedAt = item.UpdatedAt
                 }).ToList()
             };
+        }
+
+        private async Task<string> HandleVideoFileUploadAsync(IFormFile videoFile)
+        {
+            // Validate video file - only MP4 allowed
+            var allowedExtensions = new[] { ".mp4" };
+            var extension = Path.GetExtension(videoFile.FileName).ToLowerInvariant();
+            
+            if (!allowedExtensions.Contains(extension))
+                throw new ArgumentException("Invalid video file type. Only MP4 files are allowed.");
+
+            // Validate file size (max 500MB for videos)
+            var maxSize = 500 * 1024 * 1024; // 500MB
+            if (videoFile.Length > maxSize)
+                throw new ArgumentException("Video file size too large. Maximum 500MB allowed.");
+
+            // Create upload directory
+            var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "dynamic-pages", "videos");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            // Generate unique filename
+            var fileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            // Save file
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await videoFile.CopyToAsync(stream);
+            }
+
+            // Return file URL
+            return $"/uploads/dynamic-pages/videos/{fileName}";
+        }
+
+        private async Task DeleteVideoFileAsync(string videoUrl)
+        {
+            if (string.IsNullOrEmpty(videoUrl) || !videoUrl.StartsWith("/uploads/dynamic-pages/videos/"))
+                return;
+
+            var filePath = Path.Combine(_webHostEnvironment.WebRootPath, videoUrl.TrimStart('/'));
+            if (File.Exists(filePath))
+            {
+                await Task.Run(() => File.Delete(filePath));
+            }
         }
 
         private string GenerateSlug(string title)

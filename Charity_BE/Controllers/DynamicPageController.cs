@@ -74,7 +74,7 @@ namespace Charity_BE.Controllers
         // POST: api/dynamicpage
 
         [HttpPost("Create")]
-        public async Task<ActionResult> Create([FromBody] CreateDynamicPageDto createDto)
+        public async Task<ActionResult> Create([FromForm] CreateDynamicPageDto createDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -90,7 +90,7 @@ namespace Charity_BE.Controllers
 
         // PUT: api/dynamicpage/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult> Update(int id, [FromBody] UpdateDynamicPageDto updateDto)
+        public async Task<ActionResult> Update(int id, [FromForm] UpdateDynamicPageDto updateDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
