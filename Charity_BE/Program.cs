@@ -126,12 +126,18 @@ namespace Charity_BE
             builder.Services.AddScoped<IHelpTypeRepository, HelpTypeRepository>();
             builder.Services.AddScoped<IHelpRequestRepository, HelpRequestRepository>();
             builder.Services.AddScoped<IReconcileRequestRepository, ReconcileRequestRepository>();
+            builder.Services.AddScoped<IReconcileRequestTypeRepository, ReconcileRequestTypeRepository>();
+            builder.Services.AddScoped<IReconcileRequestAttachmentRepository, ReconcileRequestAttachmentRepository>();
+            builder.Services.AddScoped<ISupervisorRepository, SupervisorRepository>();
             builder.Services.AddScoped<IMediationRepository, MediationRepository>();
             builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
             builder.Services.AddScoped<IMediationService, MediationService>();
             builder.Services.AddScoped<IHelpTypeService, HelpTypeService>();
             builder.Services.AddScoped<IHelpRequestService, HelpRequestService>();
             builder.Services.AddScoped<IReconcileRequestService, ReconcileRequestService>();
+            builder.Services.AddScoped<IReconcileRequestTypeService, ReconcileRequestTypeService>();
+            builder.Services.AddScoped<ISupervisorService, SupervisorService>();
+            builder.Services.AddScoped<ISMSService, SMSService>();
             builder.Services.AddScoped<IAdminDashboardCount, AdminDashboardCount>();
             builder.Services.AddScoped<IImagesLibraryRepository, ImageLibraryRepository>();
             builder.Services.AddScoped<IVideosLibraryRepository, VideosLibraryRepository>();

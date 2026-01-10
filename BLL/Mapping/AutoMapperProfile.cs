@@ -16,6 +16,8 @@ using Shared.DTOS.NotificationDTOs;
 using Shared.DTOS.MediationDTOs;
 using Shared.DTOS.HelpDTOs;
 using Shared.DTOS.ReconcileRequestDTOs;
+using Shared.DTOS.ReconcileRequestTypeDTOs;
+using Shared.DTOS.SupervisorDTOs;
 using Shared.DTOS.ImageLibraryDTOs;
 using Shared.DTOS.VideosLibraryDTOs;
 using DAL.Data.Models.HomePage;
@@ -170,9 +172,25 @@ namespace BLL.Mapping
             CreateMap<Mediation, Shared.DTOS.MediationDTOs.MediationDTO>()
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
-                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl));
+                .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl))
+                .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty))
+                .ForMember(dest => dest.TotalRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count : 0))
+                .ForMember(dest => dest.CompletedRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count(r => r.Status == ReconcileRequestStatus.Completed) : 0))
+                .ForMember(dest => dest.InProgressRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count(r => r.Status == ReconcileRequestStatus.InProgress) : 0))
+                .ForMember(dest => dest.CompletedInYear, opt => opt.MapFrom(src => 0)); // Will be set in service
+            
             CreateMap<Shared.DTOS.MediationDTOs.CreateMediationDTO, Mediation>()
-                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName));
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore())
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FullName))
+                .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty))
+                .ForMember(dest => dest.ImageUrl, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.IsAvailable, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ReconcileRequests, opt => opt.Ignore());
+            
             CreateMap<Shared.DTOS.MediationDTOs.UpdateMediationDTO, Mediation>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
@@ -183,10 +201,64 @@ namespace BLL.Mapping
             CreateMap<HelpType, HelpTypeDTO>();
             CreateMap<CreateHelpTypeDTO, HelpType>();
 
-            CreateMap<ReconcileRequest, ReconcileRequestDTO>();
-            CreateMap<ReconcileRequestDTO, ReconcileRequest>();
+            // ReconcileRequest Mappings
+            CreateMap<ReconcileRequest, ReconcileRequestDTO>()
+                .ForMember(dest => dest.ReconcileRequestTypeName, opt => opt.MapFrom(src => src.ReconcileRequestType != null ? src.ReconcileRequestType.Name : ""))
+                .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.SupervisorName, opt => opt.MapFrom(src => src.Supervisor != null ? src.Supervisor.FullName : null))
+                .ForMember(dest => dest.MediationName, opt => opt.MapFrom(src => src.Mediation != null ? src.Mediation.FullName : null))
+                .ForMember(dest => dest.Attachments, opt => opt.MapFrom(src => src.Attachments));
+            
+            CreateMap<CreateReconcileRequestDTO, ReconcileRequest>()
+                .ForMember(dest => dest.Attachments, opt => opt.Ignore())
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => ReconcileRequestStatus.NewRequest))
+                .ForMember(dest => dest.SupervisorId, opt => opt.Ignore())
+                .ForMember(dest => dest.MediationId, opt => opt.Ignore())
+                .ForMember(dest => dest.ConsultantNotes, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.AssignedToSupervisorAt, opt => opt.Ignore())
+                .ForMember(dest => dest.AssignedToMediationAt, opt => opt.Ignore())
+                .ForMember(dest => dest.StartedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CompletedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ReconcileRequestType, opt => opt.Ignore())
+                .ForMember(dest => dest.Supervisor, opt => opt.Ignore())
+                .ForMember(dest => dest.Mediation, opt => opt.Ignore());
 
-            CreateMap<CreateReconcileRequestDTO, ReconcileRequest>();
+            // ReconcileRequestType Mappings
+            CreateMap<ReconcileRequestType, ReconcileRequestTypeDTO>();
+            CreateMap<CreateReconcileRequestTypeDTO, ReconcileRequestType>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ReconcileRequests, opt => opt.Ignore());
+            CreateMap<UpdateReconcileRequestTypeDTO, ReconcileRequestType>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            // Supervisor Mappings
+            CreateMap<Supervisor, SupervisorDTO>()
+                .ForMember(dest => dest.TotalRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count : 0))
+                .ForMember(dest => dest.CompletedRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count(r => r.Status == ReconcileRequestStatus.Completed) : 0))
+                .ForMember(dest => dest.InProgressRequests, opt => opt.MapFrom(src => src.ReconcileRequests != null ? src.ReconcileRequests.Count(r => r.Status == ReconcileRequestStatus.InProgress || r.Status == ReconcileRequestStatus.AssignedToMediation) : 0))
+                .ForMember(dest => dest.CompletedInYear, opt => opt.MapFrom(src => 0)); // Will be set in service
+            
+            CreateMap<CreateSupervisorDTO, Supervisor>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ReconcileRequests, opt => opt.Ignore());
+            
+            CreateMap<UpdateSupervisorDTO, Supervisor>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            // ReconcileRequestAttachment Mappings
+            CreateMap<ReconcileRequestAttachment, ReconcileRequestAttachmentDTO>();
+            CreateMap<ReconcileRequestAttachmentDTO, ReconcileRequestAttachment>()
+                .ForMember(dest => dest.ReconcileRequest, opt => opt.Ignore());
 
             CreateMap<AdviceRequest, GetAdvisorRequestDTO>()
                 .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User.FullName))

@@ -1,11 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DAL.Data.Models.IdentityModels
 {
-    public class Mediation
+    public class Supervisor
     {
         [Key]
         public int Id { get; set; }
@@ -17,23 +16,29 @@ namespace DAL.Data.Models.IdentityModels
         public virtual ApplicationUser User { get; set; }
 
         [Required]
-        [StringLength(50)]
+        [StringLength(100)]
         public string FullName { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [StringLength(100)]
+        public string Email { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        public string PhoneNumber { get; set; }
 
         [Required]
         [StringLength(200)]
         public string Specialty { get; set; }
 
-        public string? ImageUrl { get; set; }
         public bool IsActive { get; set; } = true;
-        public bool IsAvailable { get; set; } = true;
-        public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
-        [StringLength(20)]
-        public string PhoneNumber { get; set; }
-        [EmailAddress]
-        public string Email { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         // Navigation Properties
         public virtual ICollection<ReconcileRequest> ReconcileRequests { get; set; } = new List<ReconcileRequest>();
     }
-} 
+}
+

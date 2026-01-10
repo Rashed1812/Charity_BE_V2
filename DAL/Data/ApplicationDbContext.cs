@@ -35,7 +35,10 @@ namespace DAL.Data
         public DbSet<HelpType> HelpTypes { get; set; }
         public DbSet<HelpRequest> HelpRequests { get; set; }
         public DbSet<ReconcileRequest> ReconcileRequests { get; set; }
+        public DbSet<ReconcileRequestType> ReconcileRequestTypes { get; set; }
+        public DbSet<ReconcileRequestAttachment> ReconcileRequestAttachments { get; set; }
         public DbSet<Mediation> Mediations { get; set; }
+        public DbSet<Supervisor> Supervisors { get; set; }
         public DbSet<ImagesLibrary> ImagesLibrary { get; set; }
         public DbSet<VideosLibrary> VideosLibraries { get; set; }
         public DbSet<HeroSection> HeroSections { get; set; }
@@ -66,6 +69,11 @@ namespace DAL.Data
                 .HasOne(u => u.Mediation)
                 .WithOne(m => m.User)
                 .HasForeignKey<Mediation>(m => m.UserId);
+
+            builder.Entity<ApplicationUser>()
+                .HasOne(u => u.Supervisor)
+                .WithOne(s => s.User)
+                .HasForeignKey<Supervisor>(s => s.UserId);
 
 
             builder.Entity<Advisor>()
@@ -297,6 +305,31 @@ namespace DAL.Data
                 .HasOne(ni => ni.NewsItem)
                 .WithMany(n => n.Images)
                 .HasForeignKey(ni => ni.NewsItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ReconcileRequest relationships
+            builder.Entity<ReconcileRequest>()
+                .HasOne(r => r.ReconcileRequestType)
+                .WithMany(t => t.ReconcileRequests)
+                .HasForeignKey(r => r.ReconcileRequestTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ReconcileRequest>()
+                .HasOne(r => r.Supervisor)
+                .WithMany(s => s.ReconcileRequests)
+                .HasForeignKey(r => r.SupervisorId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ReconcileRequest>()
+                .HasOne(r => r.Mediation)
+                .WithMany(m => m.ReconcileRequests)
+                .HasForeignKey(r => r.MediationId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ReconcileRequest>()
+                .HasMany(r => r.Attachments)
+                .WithOne(a => a.ReconcileRequest)
+                .HasForeignKey(a => a.ReconcileRequestId)
                 .OnDelete(DeleteBehavior.Cascade);
 
 

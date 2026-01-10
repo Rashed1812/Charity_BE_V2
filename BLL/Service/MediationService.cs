@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BLL.ServiceAbstraction;
+using DAL.Data.Models;
 using DAL.Data.Models.IdentityModels;
 using DAL.Repositories.RepositoryIntrfaces;
 using Shared.DTOS.MediationDTOs;
+using Shared.DTOS.ReconcileRequestDTOs;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using BLL.Services.FileService;
@@ -28,16 +30,47 @@ namespace BLL.Service
             _mapper = mapper;
         }
 
-        public async Task<List<MediationDTO>> GetAllMediationsAsync()
+        public async Task<List<MediationDTO>> GetAllMediationsAsync(int? year = null)
         {
-            var mediations = await _mediationRepository.GetAllMediationsWithRelatedDataAsync();
-            return _mapper.Map<List<MediationDTO>>(mediations);
+            var mediations = await _mediationRepository.GetAllMediationsWithStatsAsync(year);
+            var dtos = _mapper.Map<List<MediationDTO>>(mediations);
+
+            // Calculate statistics for each mediation
+            foreach (var dto in dtos)
+            {
+                var mediation = mediations.FirstOrDefault(m => m.Id == dto.Id);
+                if (mediation != null)
+                {
+                    dto.TotalRequests = mediation.ReconcileRequests?.Count ?? 0;
+                    dto.CompletedRequests = mediation.ReconcileRequests?.Count(r => r.Status == ReconcileRequestStatus.Completed) ?? 0;
+                    dto.InProgressRequests = mediation.ReconcileRequests?.Count(r => r.Status == ReconcileRequestStatus.InProgress) ?? 0;
+
+                    if (year.HasValue)
+                    {
+                        dto.CompletedInYear = await _mediationRepository.GetCountByMediationAndYearAsync(dto.Id, year.Value);
+                    }
+                }
+            }
+
+            return dtos;
         }
 
-        public async Task<MediationDTO> GetMediationByIdAsync(int id)
+        public async Task<MediationDTO> GetMediationByIdAsync(int id, int? year = null)
         {
-            var mediation = await _mediationRepository.GetMediationByIdWithRelatedDataAsync(id);
-            return _mapper.Map<MediationDTO>(mediation);
+            var mediation = await _mediationRepository.GetMediationByIdWithStatsAsync(id, year);
+            if (mediation == null) return null;
+
+            var dto = _mapper.Map<MediationDTO>(mediation);
+            dto.TotalRequests = mediation.ReconcileRequests?.Count ?? 0;
+            dto.CompletedRequests = mediation.ReconcileRequests?.Count(r => r.Status == ReconcileRequestStatus.Completed) ?? 0;
+            dto.InProgressRequests = mediation.ReconcileRequests?.Count(r => r.Status == ReconcileRequestStatus.InProgress) ?? 0;
+
+            if (year.HasValue)
+            {
+                dto.CompletedInYear = await _mediationRepository.GetCountByMediationAndYearAsync(id, year.Value);
+            }
+
+            return dto;
         }
 
         public async Task<MediationDTO> GetMediationByUserIdAsync(string userId)
@@ -78,15 +111,21 @@ namespace BLL.Service
                 imgUrl = await fileService.UploadFileAsync(createMediationDto.Image, "mediationImage");
             }
 
+            // Validate password confirmation
+            if (createMediationDto.Password != createMediationDto.ConfirmPassword)
+                throw new InvalidOperationException("كلمة المرور وتأكيد كلمة المرور غير متطابقين");
+
             // Create mediation
             var mediation = new Mediation
             {
                 UserId = user.Id,
                 FullName = createMediationDto.FullName,
+                Specialty = createMediationDto.Specialty,
                 PhoneNumber = createMediationDto.PhoneNumber,
                 Email = createMediationDto.Email,
                 ImageUrl = imgUrl,
-                IsActive = true
+                IsActive = true,
+                IsAvailable = true
             };
 
             var createdMediation = await _mediationRepository.AddAsync(mediation);
@@ -100,11 +139,38 @@ namespace BLL.Service
                 return null;
 
             if (!string.IsNullOrEmpty(updateMediationDto.FullName))
+            {
                 mediation.FullName = updateMediationDto.FullName;
+                var user = await _userManager.FindByIdAsync(mediation.UserId);
+                if (user != null)
+                {
+                    user.FullName = updateMediationDto.FullName;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
+            if (!string.IsNullOrEmpty(updateMediationDto.Specialty))
+                mediation.Specialty = updateMediationDto.Specialty;
             if (!string.IsNullOrEmpty(updateMediationDto.PhoneNumber))
+            {
                 mediation.PhoneNumber = updateMediationDto.PhoneNumber;
+                var user = await _userManager.FindByIdAsync(mediation.UserId);
+                if (user != null)
+                {
+                    user.PhoneNumber = updateMediationDto.PhoneNumber;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
             if (!string.IsNullOrEmpty(updateMediationDto.Email))
+            {
                 mediation.Email = updateMediationDto.Email;
+                var user = await _userManager.FindByIdAsync(mediation.UserId);
+                if (user != null)
+                {
+                    user.Email = updateMediationDto.Email;
+                    user.UserName = updateMediationDto.Email;
+                    await _userManager.UpdateAsync(user);
+                }
+            }
             if (updateMediationDto.IsActive.HasValue)
                 mediation.IsActive = updateMediationDto.IsActive.Value;
             if (updateMediationDto.IsAvailable.HasValue)
@@ -136,6 +202,17 @@ namespace BLL.Service
             // Delete mediation
             await _mediationRepository.DeleteAsync(id);
             return true;
+        }
+
+        public async Task<bool> ToggleActiveAsync(int id)
+        {
+            var mediation = await _mediationRepository.GetByIdAsync(id);
+            if (mediation == null)
+                return false;
+
+            mediation.IsActive = !mediation.IsActive;
+            await _mediationRepository.UpdateAsync(mediation);
+            return mediation.IsActive;
         }
     }
 } 
