@@ -19,9 +19,8 @@ namespace DAL.Data.DataSeed
     {
         public async Task DataSeedAsync()
         {
-            var pendingMigrations = await _DbContext.Database.GetPendingMigrationsAsync();
-            if (pendingMigrations.Any())
-                await _DbContext.Database.MigrateAsync();
+            // Skip all migration operations since database was created manually with existing tables
+            Console.WriteLine("Skipping migrations - database tables already exist");
 
             try
             {
@@ -272,6 +271,54 @@ namespace DAL.Data.DataSeed
             {
                 Console.WriteLine($"An error occurred during data seeding: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        private async Task AddMigrationHistoryIfNeededAsync()
+        {
+            try
+            {
+                // Check if migration history table exists
+                var migrationHistoryTableExists = await _DbContext.Database.ExecuteSqlRawAsync(
+                    "IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NOT NULL SELECT 1 ELSE SELECT 0") > 0;
+
+                if (migrationHistoryTableExists)
+                {
+                    // Add migration history entries for migrations that were applied manually
+                    var migrationsToAdd = new[]
+                    {
+                        ("20250809160217_last versio", "8.0.10"),
+                        ("20260110121656_UpdateReconcileRequestSystem", "8.0.10")
+                    };
+
+                    foreach (var (migrationId, productVersion) in migrationsToAdd)
+                    {
+                        // Check if migration already exists in history
+                        var existsResult = await _DbContext.Database.ExecuteSqlRawAsync(
+                            $"IF EXISTS (SELECT 1 FROM [__EFMigrationsHistory] WHERE [MigrationId] = '{migrationId}') SELECT 1 ELSE SELECT 0");
+
+                        if (existsResult == 0)
+                        {
+                            await _DbContext.Database.ExecuteSqlRawAsync(
+                                $"INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES ('{migrationId}', '{productVersion}')");
+                            Console.WriteLine($"Added migration history for: {migrationId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Migration {migrationId} already exists in history");
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Migration history table does not exist");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to add migration history: {ex.Message}");
+                // Try a simpler approach - just skip migrations entirely
+                Console.WriteLine("Skipping migration check and proceeding with data seeding...");
             }
         }
 

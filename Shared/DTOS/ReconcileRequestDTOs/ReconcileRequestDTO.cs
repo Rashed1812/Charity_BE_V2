@@ -82,7 +82,7 @@ namespace Shared.DTOS.ReconcileRequestDTOs
         public string? ConsultantNotes { get; set; }
     }
 
-    public class CompleteRequestDTO
+    public class CompleteReconcileRequestDTO
     {
         [StringLength(5000)]
         public string? ConsultantNotes { get; set; }

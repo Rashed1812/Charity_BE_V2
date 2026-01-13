@@ -27,7 +27,7 @@ namespace BLL.ServiceAbstraction
         // Mediation operations
         Task<List<ReconcileRequestDTO>> GetByMediationIdAsync(int mediationId);
         Task<ReconcileRequestDTO> StartRequestAsync(int requestId, StartRequestDTO dto);
-        Task<ReconcileRequestDTO> CompleteExecutionAsync(int requestId, CompleteRequestDTO dto);
+        Task<ReconcileRequestDTO> CompleteExecutionAsync(int requestId, CompleteReconcileRequestDTO dto);
         Task<bool> SendSMSAsync(int requestId, SendSMSDTO dto);
         List<string> GetSMSTemplates();
     }

@@ -217,7 +217,7 @@ namespace BLL.Service
             return _mapper.Map<ReconcileRequestDTO>(await _repository.GetByIdWithDetailsAsync(updated.Id));
         }
 
-        public async Task<ReconcileRequestDTO> CompleteExecutionAsync(int requestId, CompleteRequestDTO dto)
+        public async Task<ReconcileRequestDTO> CompleteExecutionAsync(int requestId, CompleteReconcileRequestDTO dto)
         {
             var entity = await _repository.GetByIdWithDetailsAsync(requestId);
             if (entity == null)

@@ -209,9 +209,18 @@ namespace Charity_BE
                 var services = scope.ServiceProvider;
                 try
                 {
-                    var seeder = services.GetRequiredService<DataSeed>();
-                    await seeder.IdentityDataSeedAsync();
-                    await seeder.DataSeedAsync();
+                    // Skip seeding if database is already populated
+                    var context = services.GetRequiredService<ApplicationDbContext>();
+                    if (!await context.Users.AnyAsync())
+                    {
+                        var seeder = services.GetRequiredService<DataSeed>();
+                        await seeder.IdentityDataSeedAsync();
+                        await seeder.DataSeedAsync();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Database already contains data, skipping seeding.");
+                    }
                 }
                 catch (Exception ex)
                 {

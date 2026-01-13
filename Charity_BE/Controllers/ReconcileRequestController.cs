@@ -358,7 +358,7 @@ namespace Charity_BE.Controllers
         // POST: api/reconcilerequest/{id}/complete-execution
         [HttpPost("{id}/complete-execution")]
         [Authorize(Roles = "Mediation")]
-        public async Task<ActionResult<ApiResponse<ReconcileRequestDTO>>> CompleteExecution(int id, [FromBody] CompleteRequestDTO dto)
+        public async Task<ActionResult<ApiResponse<ReconcileRequestDTO>>> CompleteExecution(int id, [FromBody] CompleteReconcileRequestDTO dto)
         {
             try
             {
