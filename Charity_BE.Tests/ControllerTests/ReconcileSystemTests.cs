@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System.Net;
 using FluentAssertions;
+using FluentAssertions.Collections;
 using System.Collections.Generic;
 using Shared.DTOS.ReconcileRequestDTOs;
 using Shared.DTOS.ReconcileRequestTypeDTOs;
@@ -19,9 +20,9 @@ using Microsoft.AspNetCore.Http;
 
 namespace Charity_BE.Tests.ControllerTests
 {
-    public class ReconcileSystemTests : IClassFixture<WebApplicationFactory<Program>>
+    public class ReconcileSystemTests : IClassFixture<CustomWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
         // Test data
@@ -32,7 +33,7 @@ namespace Charity_BE.Tests.ControllerTests
         private const string MediationEmail = "mediation@gmail.com";
         private const string MediationPassword = "P@ssw0rd123";
 
-        public ReconcileSystemTests(WebApplicationFactory<Program> factory)
+        public ReconcileSystemTests(CustomWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _client = _factory.CreateClient();
@@ -85,7 +86,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Data.Should().NotBeNull();
             content.Data.Token.Should().NotBeNullOrEmpty();
             content.Data.User.Should().NotBeNull();
-            content.Data.User.Role.Should().Be("Supervisor");
+            content.Data.User.Role.Should().Contain("Supervisor");
         }
 
         [Fact]
@@ -109,7 +110,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Data.Should().NotBeNull();
             content.Data.Token.Should().NotBeNullOrEmpty();
             content.Data.User.Should().NotBeNull();
-            content.Data.User.Role.Should().Be("Mediation");
+            content.Data.User.Role.Should().Contain("Mediation");
         }
 
         #endregion
@@ -210,7 +211,7 @@ namespace Charity_BE.Tests.ControllerTests
             responseContent.Data.Should().NotBeNull();
             responseContent.Data.Name.Should().Be("أحمد محمد");
             responseContent.Data.Email.Should().Be("ahmed.test@example.com");
-            responseContent.Data.Status.Should().Be(1); // NewRequest
+            responseContent.Data.Status.Should().Be(ReconcileRequestStatus.NewRequest); // NewRequest
         }
 
         [Fact]
@@ -298,7 +299,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(2); // AssignedToSupervisor
+            content.Data.Status.Should().Be(ReconcileRequestStatus.AssignedToSupervisor); // AssignedToSupervisor
             content.Data.SupervisorId.Should().Be(supervisorId);
         }
 
@@ -320,7 +321,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(8); // Cancelled
+            content.Data.Status.Should().Be(ReconcileRequestStatus.Cancelled); // Cancelled
         }
 
         #endregion
@@ -376,7 +377,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(3); // AssignedToMediation
+            content.Data.Status.Should().Be(ReconcileRequestStatus.AssignedToMediation); // AssignedToMediation
             content.Data.MediationId.Should().Be(mediationId);
         }
 
@@ -411,7 +412,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(6); // SupervisorReviewed
+            content.Data.Status.Should().Be(ReconcileRequestStatus.SupervisorReviewed); // SupervisorReviewed
         }
 
         #endregion
@@ -468,7 +469,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(4); // InProgress
+            content.Data.Status.Should().Be(ReconcileRequestStatus.InProgress); // InProgress
             content.Data.ConsultantNotes.Should().Be("بدء الاستشارة");
         }
 
@@ -502,7 +503,7 @@ namespace Charity_BE.Tests.ControllerTests
             content.Should().NotBeNull();
             content.Success.Should().BeTrue();
             content.Data.Should().NotBeNull();
-            content.Data.Status.Should().Be(5); // PendingSupervisorReview
+            content.Data.Status.Should().Be(ReconcileRequestStatus.PendingSupervisorReview); // PendingSupervisorReview
         }
 
         [Fact]
@@ -696,7 +697,7 @@ namespace Charity_BE.Tests.ControllerTests
             finalContent.Should().NotBeNull();
             finalContent.Success.Should().BeTrue();
             finalContent.Data.Should().NotBeNull();
-            finalContent.Data.Status.Should().Be(7); // Completed
+            finalContent.Data.Status.Should().Be(ReconcileRequestStatus.Completed); // Completed
         }
 
         #endregion
@@ -708,6 +709,12 @@ namespace Charity_BE.Tests.ControllerTests
             var loginDto = new LoginDTO { Email = AdminEmail, Password = AdminPassword };
             var response = await _client.PostAsJsonAsync("/api/authentication/login", loginDto);
             var content = await response.Content.ReadFromJsonAsync<ApiResponse<AuthResponseDTO>>();
+
+            if (content == null || !content.Success || content.Data == null)
+            {
+                throw new Exception($"Login failed for admin. Response: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+            }
+
             return content.Data.Token;
         }
 
@@ -716,6 +723,12 @@ namespace Charity_BE.Tests.ControllerTests
             var loginDto = new LoginDTO { Email = SupervisorEmail, Password = SupervisorPassword };
             var response = await _client.PostAsJsonAsync("/api/authentication/login", loginDto);
             var content = await response.Content.ReadFromJsonAsync<ApiResponse<AuthResponseDTO>>();
+
+            if (content == null || !content.Success || content.Data == null)
+            {
+                throw new Exception($"Login failed for supervisor. Response: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+            }
+
             return content.Data.Token;
         }
 
@@ -724,6 +737,12 @@ namespace Charity_BE.Tests.ControllerTests
             var loginDto = new LoginDTO { Email = MediationEmail, Password = MediationPassword };
             var response = await _client.PostAsJsonAsync("/api/authentication/login", loginDto);
             var content = await response.Content.ReadFromJsonAsync<ApiResponse<AuthResponseDTO>>();
+
+            if (content == null || !content.Success || content.Data == null)
+            {
+                throw new Exception($"Login failed for mediation. Response: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+            }
+
             return content.Data.Token;
         }
 
@@ -733,6 +752,12 @@ namespace Charity_BE.Tests.ControllerTests
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             var response = await _client.SendAsync(request);
             var content = await response.Content.ReadFromJsonAsync<ApiResponse<CurrentUserDTO>>();
+
+            if (content == null || !content.Success || content.Data == null)
+            {
+                throw new Exception($"Failed to get user info. Response: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+            }
+
             return content.Data;
         }
 
@@ -804,7 +829,7 @@ namespace Charity_BE.Tests.ControllerTests
             // Since mediation controller doesn't have user/{userId} endpoint, we'll get all and find by userId
             var response = await _client.GetAsync("/api/mediation");
             var content = await response.Content.ReadFromJsonAsync<ApiResponse<List<MediationDTO>>>();
-            return content.Data.First(m => m.Id == userId);
+            return content.Data.First(m => m.Id == int.Parse(userId));
         }
 
         private async Task AssignRequestToSupervisor(string token, int requestId, int supervisorId)

@@ -81,7 +81,8 @@ namespace Charity_BE
             });
 
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+                     b => b.MigrationsAssembly("DAL")));
 
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()

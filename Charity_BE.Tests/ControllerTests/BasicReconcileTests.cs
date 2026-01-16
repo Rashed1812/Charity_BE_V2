@@ -15,12 +15,12 @@ using System.Net.Http.Json;
 
 namespace Charity_BE.Tests.ControllerTests
 {
-    public class BasicReconcileTests : IClassFixture<WebApplicationFactory<Program>>
+    public class BasicReconcileTests : IClassFixture<CustomWebApplicationFactory<Program>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly CustomWebApplicationFactory<Program> _factory;
         private readonly HttpClient _client;
 
-        public BasicReconcileTests(WebApplicationFactory<Program> factory)
+        public BasicReconcileTests(CustomWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _client = _factory.CreateClient();
