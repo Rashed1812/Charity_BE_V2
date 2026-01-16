@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل عملية المصالحة - Reconcile Request Process</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            margin: 40px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #34495e;
+            border-right: 4px solid #e74c3c;
+            padding-right: 10px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #27ae60;
+            margin-top: 25px;
+        }
+        .step {
+            background-color: #ecf0f1;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .role {
+            background-color: #ffeaa7;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px;
+            font-weight: bold;
+            color: #d63031;
+        }
+        .endpoint {
+            background-color: #74b9ff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 5px 0;
+            display: inline-block;
+        }
+        .status {
+            background-color: #a29bfe;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin: 2px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: right;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        .flow-diagram {
+            text-align: center;
+            font-size: 1.2em;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #ecf0f1;
+            border-radius: 10px;
+        }
+        .notification {
+            background-color: #fdcb6e;
+            border-left: 4px solid #e17055;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .code {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 دليل شامل لعملية طلب المصالحة</h1>
+        <p style="text-align: center; font-size: 1.1em; color: #7f8c8d;">
+            Reconcile Request Process Guide
+        </p>
+
+        <h2>📋 نظرة عامة على العملية</h2>
+        <p>يوضح هذا الدليل خطوات تنفيذ طلب المصالحة من البداية حتى النهاية مع تحديد الأدوار والمسؤوليات والـ Endpoints المستخدمة.</p>
+
+        <div class="flow-diagram">
+            <strong>تسلسل الحالات:</strong><br>
+            طلب جديد → إحالة للمشرف → إحالة للمستشار → قيد التنفيذ → مراجعة المشرف → إكمال نهائي
+        </div>
+
+        <h2>👥 الأدوار والصلاحيات</h2>
+        <table>
+            <tr>
+                <th>الدور</th>
+                <th>الصلاحيات</th>
+            </tr>
+            <tr>
+                <td><span class="role">Anonymous</span></td>
+                <td>إنشاء طلب المصالحة فقط</td>
+            </tr>
+            <tr>
+                <td><span class="role">Admin</span></td>
+                <td>عرض جميع الطلبات، إحالة للمشرفين، إلغاء، إكمال نهائي</td>
+            </tr>
+            <tr>
+                <td><span class="role">Supervisor</span></td>
+                <td>عرض طلباته، إحالة للمستشارين، مراجعة الطلبات</td>
+            </tr>
+            <tr>
+                <td><span class="role">Mediation</span></td>
+                <td>عرض طلباته، بدء التنفيذ، إكمال المصالحة، إرسال SMS</td>
+            </tr>
+        </table>
+
+        <h2>🔄 المرحلة 1: إرسال الطلب (العميل)</h2>
+
+        <div class="step">
+            <h3>الخطوة 1.1: إنشاء طلب المصالحة</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Anonymous</span></p>
+            <p><strong>الحالة:</strong> <span class="status">NewRequest</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest</span></p>
+            <p><strong>الوصف:</strong> يقوم العميل بإرسال طلب المصالحة مع البيانات الأساسية</p>
+
+            <strong>البيانات المطلوبة:</strong>
+            <div class="code">
+{
+    "name": "اسم الطالب",
+    "email": "email@example.com",
+    "phoneNumber": "05xxxxxxxx",
+    "requestText": "وصف المشكلة",
+    "reconcileRequestTypeId": 1,
+    "attachments": [] // ملفات مرفقة اختيارية
+}
+            </div>
+
+            <div class="notification">
+                <strong>النتيجة:</strong> يتم حفظ الطلب في قاعدة البيانات وإرسال إشعار لجميع الـ Admins
+            </div>
+        </div>
+
+        <h2>👨‍💼 المرحلة 2: مراجعة الطلب (الإدارة)</h2>
+
+        <div class="step">
+            <h3>الخطوة 2.1: عرض جميع الطلبات</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Admin</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">GET api/reconcilerequest</span></p>
+        </div>
+
+        <div class="step">
+            <h3>الخطوة 2.2: عرض تفاصيل طلب محدد</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Admin</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">GET api/reconcilerequest/{id}</span></p>
+        </div>
+
+        <div class="step">
+            <h3>الخطوة 2.3: إحالة الطلب للمشرف</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Admin</span></p>
+            <p><strong>الحالة الجديدة:</strong> <span class="status">AssignedToSupervisor</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest/{id}/assign-supervisor</span></p>
+
+            <div class="code">
+{
+    "supervisorId": 1
+}
+            </div>
+        </div>
+
+        <h2>👨‍🏫 المرحلة 3: مراجعة المشرف</h2>
+
+        <div class="step">
+            <h3>الخطوة 3.1: عرض الطلبات المحالة للمشرف</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Supervisor</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">GET api/reconcilerequest/supervisor/{supervisorId}</span></p>
+        </div>
+
+        <div class="step">
+            <h3>الخطوة 3.2: إحالة الطلب للمستشار</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Supervisor</span></p>
+            <p><strong>الحالة الجديدة:</strong> <span class="status">AssignedToMediation</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest/{id}/assign-mediation</span></p>
+
+            <div class="code">
+{
+    "mediationId": 1
+}
+            </div>
+        </div>
+
+        <h2>👨‍⚖️ المرحلة 4: تنفيذ المصالحة (المستشار)</h2>
+
+        <div class="step">
+            <h3>الخطوة 4.1: عرض الطلبات المحالة للمستشار</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Mediation</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">GET api/reconcilerequest/mediation/{mediationId}</span></p>
+        </div>
+
+        <div class="step">
+            <h3>الخطوة 4.2: بدء تنفيذ الطلب</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Mediation</span></p>
+            <p><strong>الحالة الجديدة:</strong> <span class="status">InProgress</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest/{id}/start</span></p>
+
+            <div class="code">
+{
+    "consultantNotes": "ملاحظات المستشار"
+}
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>الخطوة 4.3: إكمال تنفيذ المصالحة</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Mediation</span></p>
+            <p><strong>الحالة الجديدة:</strong> <span class="status">PendingSupervisorReview</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest/{id}/complete-execution</span></p>
+
+            <div class="code">
+{
+    "result": "نتيجة المصالحة",
+    "consultantNotes": "ملاحظات إضافية"
+}
+            </div>
+        </div>
+
+        <h2>✅ المرحلة 5: إغلاق الطلب (الإدارة)</h2>
+
+        <div class="step">
+            <h3>الخطوة 5.1: إكمال الطلب نهائياً</h3>
+            <p><strong>الدور المسؤول:</strong> <span class="role">Admin</span></p>
+            <p><strong>الحالة النهائية:</strong> <span class="status">Completed</span></p>
+            <p><strong>الـ Endpoint:</strong> <span class="endpoint">POST api/reconcilerequest/{id}/complete</span></p>
+        </div>
+
+        <h2>📱 نظام الإشعارات</h2>
+        <div class="notification">
+            يتم إرسال إشعارات تلقائية في كل خطوة:
+            <ul>
+                <li><strong>إشعارات داخلية:</strong> للمستخدمين المعنيين</li>
+                <li><strong>إشعارات بريد إلكتروني:</strong> للـ Admins عند إنشاء طلب جديد</li>
+            </ul>
+        </div>
+
+        <h2>🎯 ملخص تسلسل الحالات</h2>
+        <div style="text-align: center; margin: 20px 0;">
+            <div style="display: inline-block; background: #ecf0f1; padding: 20px; border-radius: 10px;">
+                <strong>NewRequest</strong> → <strong>AssignedToSupervisor</strong> → <strong>AssignedToMediation</strong> →<br>
+                <strong>InProgress</strong> → <strong>PendingSupervisorReview</strong> → <strong>SupervisorReviewed</strong> → <strong>Completed</strong>
+                <br><br>
+                <em>أو في أي مرحلة: Any Status → Cancelled</em>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #7f8c8d; font-size: 0.9em;">
+            <p>تم إنشاء هذا الدليل بواسطة نظام إدارة طلبات المصالحة</p>
+            <p>تاريخ الإنشاء: 2026-01-16</p>
+        </div>
+    </div>
+</body>
+</html>
