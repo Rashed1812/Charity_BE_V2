@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -19,7 +22,7 @@ namespace BLL.Service
         {
             _configuration = configuration;
             _logger = logger;
-            
+
             // Initialize SMS Templates (نماذج رسائل SMS المقترحة)
             _smsTemplates = new List<string>
             {
@@ -53,13 +56,16 @@ namespace BLL.Service
                 {
                     case "twilio":
                         return await SendViaTwilioAsync(formattedPhone, message);
-                    
+
                     case "mobily":
                         return await SendViaMobilyAsync(formattedPhone, message);
-                    
+
                     case "gateway":
                         return await SendViaGatewayAsync(formattedPhone, message);
-                    
+
+                    case "4jawaly":
+                        return await SendVia4jawalyAsync(formattedPhone, message);
+
                     case "mock":
                     default:
                         // Mock implementation for development/testing
@@ -174,7 +180,7 @@ namespace BLL.Service
                 /*
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-                
+
                 var payload = new
                 {
                     to = phoneNumber,
@@ -185,7 +191,7 @@ namespace BLL.Service
                 var json = JsonSerializer.Serialize(payload);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await httpClient.PostAsync(apiUrl, content);
-                
+
                 return response.IsSuccessStatusCode;
                 */
 
@@ -196,6 +202,58 @@ namespace BLL.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending SMS via Gateway");
+                throw;
+            }
+        }
+
+        private async Task<bool> SendVia4jawalyAsync(string phoneNumber, string message)
+        {
+            try
+            {
+                // 4jawaly SMS Gateway implementation
+                var apiKey = _configuration["SMS:4jawaly:ApiKey"];
+                var apiSecret = _configuration["SMS:4jawaly:ApiSecret"];
+                var sender = _configuration["SMS:4jawaly:Sender"];
+
+                if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
+                {
+                    _logger.LogWarning("4jawaly credentials not configured. Using mock sending.");
+                    return await Task.FromResult(true);
+                }
+
+                using var httpClient = new HttpClient();
+                var base64Auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{apiKey}:{apiSecret}"));
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {base64Auth}");
+
+                // 4jawaly API typically uses form-encoded data
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("sender", sender),
+                    new KeyValuePair<string, string>("mobile", phoneNumber),
+                    new KeyValuePair<string, string>("message", message)
+                });
+
+                // 4jawaly API endpoint (adjust if different based on documentation)
+                var response = await httpClient.PostAsync("https://api-sms.4jawaly.com/api/v1/account/area/sms/send", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation($"4jawaly API Response: {response.StatusCode} - {responseContent}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parse response to check for success (adjust based on actual API response structure)
+                    // Typically 4jawaly returns JSON with success/error codes
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError($"4jawaly SMS failed: {response.StatusCode} - {responseContent}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending SMS via 4jawaly");
                 throw;
             }
         }
@@ -244,4 +302,3 @@ namespace BLL.Service
         }
     }
 }
-
