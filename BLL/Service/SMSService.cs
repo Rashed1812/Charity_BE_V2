@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -210,53 +211,60 @@ namespace BLL.Service
         {
             try
             {
-                // 4jawaly SMS Gateway implementation
                 var apiKey = _configuration["SMS:4jawaly:ApiKey"];
                 var apiSecret = _configuration["SMS:4jawaly:ApiSecret"];
                 var sender = _configuration["SMS:4jawaly:Sender"];
+                var numberIso = "SA";
 
-                if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret))
-                {
-                    _logger.LogWarning("4jawaly credentials not configured. Using mock sending.");
-                    return await Task.FromResult(true);
-                }
+                var formattedNumber = FormatPhoneNumber(phoneNumber);
+
+                var auth = Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes($"{apiKey}:{apiSecret}")
+                );
 
                 using var httpClient = new HttpClient();
-                var base64Auth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{apiKey}:{apiSecret}"));
-                httpClient.DefaultRequestHeaders.Add("Authorization", $"Basic {base64Auth}");
 
-                // 4jawaly API typically uses form-encoded data
-                var content = new FormUrlEncodedContent(new[]
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Basic", auth);
+
+                httpClient.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/json"));
+
+                var payload = new
                 {
-                    new KeyValuePair<string, string>("sender", sender),
-                    new KeyValuePair<string, string>("mobile", phoneNumber),
-                    new KeyValuePair<string, string>("message", message)
-                });
-
-                // 4jawaly API endpoint (adjust if different based on documentation)
-                var response = await httpClient.PostAsync("https://api-sms.4jawaly.com/api/v1/account/area/sms/send", content);
-                var responseContent = await response.Content.ReadAsStringAsync();
-
-                _logger.LogInformation($"4jawaly API Response: {response.StatusCode} - {responseContent}");
-
-                if (response.IsSuccessStatusCode)
+                    messages = new[]
+                    {
+                new
                 {
-                    // Parse response to check for success (adjust based on actual API response structure)
-                    // Typically 4jawaly returns JSON with success/error codes
-                    return true;
+                    text = message,
+                    numbers = new[] { formattedNumber },
+                    sender = sender,
+                    number_iso = numberIso
                 }
-                else
-                {
-                    _logger.LogError($"4jawaly SMS failed: {response.StatusCode} - {responseContent}");
-                    return false;
-                }
+            }
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await httpClient.PostAsync(
+                    "https://api-sms.4jawaly.com/api/v1/account/area/sms/send",
+                    content
+                );
+
+                var responseBody = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation($"4jawaly Response: {response.StatusCode} - {responseBody}");
+
+                return response.IsSuccessStatusCode;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending SMS via 4jawaly");
-                throw;
+                _logger.LogError(ex, "4jawaly SMS Error");
+                return false;
             }
         }
+
+
 
         public List<string> GetSMSTemplates()
         {
@@ -268,37 +276,21 @@ namespace BLL.Service
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 return phoneNumber;
 
-            // Remove all non-digit characters
             var digitsOnly = Regex.Replace(phoneNumber, @"[^\d]", "");
 
-            // Handle Saudi phone numbers
             if (digitsOnly.StartsWith("966"))
-            {
-                // Already has country code
-                return $"+{digitsOnly}";
-            }
-            else if (digitsOnly.StartsWith("05"))
-            {
-                // Local format (05xxxxxxxx)
-                return $"+966{digitsOnly.Substring(1)}"; // Remove leading 0 and add country code
-            }
-            else if (digitsOnly.StartsWith("5"))
-            {
-                // Without leading 0 (5xxxxxxxx)
-                return $"+966{digitsOnly}";
-            }
-            else if (digitsOnly.Length == 9)
-            {
-                // 9 digits without country code or leading 0
-                return $"+966{digitsOnly}";
-            }
+                return digitsOnly;
 
-            // If it already starts with +, return as is
-            if (phoneNumber.StartsWith("+"))
-                return phoneNumber;
+            if (digitsOnly.StartsWith("05"))
+                return "966" + digitsOnly.Substring(1);
 
-            // Default: assume it's a valid international format or add + if missing
-            return phoneNumber.StartsWith("+") ? phoneNumber : $"+{digitsOnly}";
+            if (digitsOnly.StartsWith("5"))
+                return "966" + digitsOnly;
+
+            if (digitsOnly.Length == 9)
+                return "966" + digitsOnly;
+
+            return digitsOnly;
         }
     }
 }
